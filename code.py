@@ -1,7 +1,7 @@
 import streamlit as st
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
-from openai.error import OpenAIError
+from openai import OpenAIError
 import time
 
 # Set up the title of the web application
