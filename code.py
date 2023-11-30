@@ -60,7 +60,7 @@ def define_instructions(original_message, key_points, synthetic_level, tone):
     return common_instructions + specific_instructions
 
 
-def answer_message(original_message, key_points):
+def answer_message(original_message, key_points, openai_api_key):
     try:
         # Initialize the language model
         llm = OpenAI(model_name="gpt-4", openai_api_key=openai_api_key)
@@ -107,4 +107,4 @@ with st.form("myform"):
         st.info("Please enter an original message.")
     # If the form is submitted, generate the email response
     elif submitted:
-        answer_message(original_message, key_points)
+        answer_message(original_message, key_points, openai_api_key)
