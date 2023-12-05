@@ -1,8 +1,18 @@
+import streamlit as st
 
+from langchain.prompts import (
+    ChatPromptTemplate,
+    PromptTemplate,
+    SystemMessagePromptTemplate,
+    AIMessagePromptTemplate,
+    HumanMessagePromptTemplate,
+)
+from datetime import datetime
 from langchain.llms import OpenAI
-from langchain.prompts import PromptTemplate
+from langchain.output_parsers import DatetimeOutputParser
+from langchain.chat_models import ChatOpenAI
 from openai import OpenAIError
-import time
+
 
 class AnswerGPT:
     def __init__(self, api_key, synthetic_level, tone, original_message, key_points):
@@ -14,47 +24,38 @@ class AnswerGPT:
 
     def define_instructions(self):
         # Define the common instructions for the language model
-        common_instructions = (
-            "You are an AI assistant with expertise in crafting email responses. "
-            "Your responses should be clear, utilizing proper structured techniques like bullet points, and paragraph breaks where needed. "
-            "You will respond in the language of the email you must respond to"
-        )
-
-        synthetic_level_instructions = {
-            6: "Use complex sentence structures, longer sentences, and more details. ",
-            5: "Make the response relatively detailed. ",
-            4: "Make the response somewhat detailed, but still fairly concise. ",
-            3: "Balance conciseness and detail in the response. ",
-            2: "Make the response somewhat concise, but with some detail. ",
-            1: "Make the response concise. ",
-            0: "Make the response extremely concise, straightforward and very short. "
-        }
+        system_instructions = """
+            You are a helpful AI assistant with expertise in crafting email responses.
+            Your responses should be clear, utilizing proper structured techniques like bullet points, and paragraph breaks where needed.
+            You will respond in the language of the email you must respond to.
+        """
 
         # Define the specific instructions based on user input
-        specific_instructions = synthetic_level_instructions[self.synthetic_level]
-        specific_instructions += f"Maintain a {self.tone} tone. "
+        system_instructions += "\n{synthetic_level}"
+        system_instructions += "\nMaintain a {tone} tone."
 
-        if self.original_message:
-            specific_instructions += f"You are replying to the following email: '{self.original_message}'. "
         if self.key_points:
-            specific_instructions += f"Ensure to include these key points in your response: '{self.key_points}'. "
-        else:
-            specific_instructions += "Provide a potential reply."
-        return common_instructions + specific_instructions
+            system_instructions += "\nEnsure to include these key points in your response: {key_points}."
+
+        system_message_prompt = SystemMessagePromptTemplate.from_template(system_instructions)
+        human_message_prompt = HumanMessagePromptTemplate.from_template("Reply to the following email:\n{email}")
+        chat_prompt = ChatPromptTemplate.from_messages([system_message_prompt, human_message_prompt])
+        return chat_prompt
 
     def answer_message(self):
         try:
             # Initialize the language model
-            llm = OpenAI(model_name="gpt-4", openai_api_key=self.api_key)
-
+            chat = ChatOpenAI(openai_api_key=self.api_key)
             # Combine the common and specific instructions
-            template = self.define_instructions()
-
+            chat_prompt = self.define_instructions()
             # Prepare the prompt for the language model
-            prompt = PromptTemplate(input_variables=[], template=template)
-            prompt_query = prompt.format()
-            return llm(prompt_query)
-
+            request = chat_prompt.format_prompt(email=self.original_message,
+                                         synthetic_level=self.synthetic_level,
+                                         tone=self.tone,
+                                         key_points=self.key_points
+                                         ).to_messages()
+            response = chat(request)
+            return response.content
         except OpenAIError as e:
             return e
         except Exception as e:

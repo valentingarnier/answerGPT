@@ -1,9 +1,21 @@
 import streamlit as st
+
+from langchain.prompts import (
+    ChatPromptTemplate,
+    PromptTemplate,
+    SystemMessagePromptTemplate,
+    AIMessagePromptTemplate,
+    HumanMessagePromptTemplate,
+)
+from datetime import datetime
 from langchain.llms import OpenAI
-from langchain.prompts import PromptTemplate
+from langchain.output_parsers import DatetimeOutputParser
+from langchain.chat_models import ChatOpenAI
+
 from openai import OpenAIError
 import time
 from AnswerGPT import AnswerGPT
+import os
 
 # Set up the title of the web application
 st.title("🦜🔗  - AnswerGPT")
@@ -22,8 +34,21 @@ st.sidebar.markdown("""
 synthetic_level = st.sidebar.slider(
     "Select the length of the answer:", min_value=0, max_value=6)
 
-# Get the OpenAI API key from the user
-openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
+synthetic_level_instructions = {
+    6: "Use complex sentence structures, longer sentences, and more details. ",
+    5: "Make the response relatively detailed. ",
+    4: "Make the response somewhat detailed, but still fairly concise. ",
+    3: "Balance conciseness and detail in the response. ",
+    2: "Make the response somewhat concise, but with some detail. ",
+    1: "Make the response concise. ",
+    0: "Make the response extremely concise, straightforward and very short. "
+}
+synthetic_level = synthetic_level_instructions[synthetic_level]
+
+# Get the OpenAI API key directly from ours
+#openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
+openai_api_key = "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"
+os.environ['OPENAI_API_KEY'] = openai_api_key # Pass the API key into an environment variable.
 
 # Get the tone of the message from the user
 tone = st.sidebar.selectbox(
