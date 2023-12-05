@@ -46,8 +46,7 @@ synthetic_level_instructions = {
 synthetic_level = synthetic_level_instructions[synthetic_level]
 
 # Get the OpenAI API key directly from ours
-#openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
-openai_api_key = "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"
+openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
 os.environ['OPENAI_API_KEY'] = openai_api_key # Pass the API key into an environment variable.
 
 # Get the tone of the message from the user
