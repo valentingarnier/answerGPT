@@ -13,6 +13,10 @@ from langchain.output_parsers import DatetimeOutputParser
 from langchain.chat_models import ChatOpenAI
 from openai import OpenAIError
 
+from langchain.chains.combine_documents.stuff import StuffDocumentsChain
+from langchain.chains.llm import LLMChain
+from langchain.prompts import PromptTemplate
+
 
 class AnswerGPT:
     def __init__(self, api_key, synthetic_level, tone, original_message, key_points):
@@ -45,7 +49,7 @@ class AnswerGPT:
     def answer_message(self):
         try:
             # Initialize the language model
-            chat = ChatOpenAI(openai_api_key=self.api_key)
+            chat = ChatOpenAI(openai_api_key=self.api_key, model_name='gpt-4')
             # Combine the common and specific instructions
             chat_prompt = self.define_instructions()
             # Prepare the prompt for the language model
@@ -55,7 +59,18 @@ class AnswerGPT:
                                          key_points=self.key_points
                                          ).to_messages()
             response = chat(request)
-            return response.content
+
+            prompt_template = """Write a concise summary of the following:
+            "{text}"
+            CONCISE SUMMARY:"""
+            prompt = PromptTemplate.from_template(prompt_template)
+
+            # Define LLM chain
+            llm = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo-16k")
+            llm_chain = LLMChain(llm=llm, prompt=prompt)
+            return llm_chain.run(self.original_message)
+
+            #return response.content
         except OpenAIError as e:
             return e
         except Exception as e:

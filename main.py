@@ -46,8 +46,10 @@ synthetic_level_instructions = {
 synthetic_level = synthetic_level_instructions[synthetic_level]
 
 # Get the OpenAI API key directly from ours
-openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
-os.environ['OPENAI_API_KEY'] = openai_api_key # Pass the API key into an environment variable.
+#openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
+#os.environ['OPENAI_API_KEY'] = openai_api_key # Pass the API key into an environment variable.
+openai_api_key = st.secrets['OPENAI_API_KEY']
+
 
 # Get the tone of the message from the user
 tone = st.sidebar.selectbox(
@@ -65,16 +67,16 @@ with st.form("myform"):
         help="Enter the key points that should be included in the email response.")
     # Add a submit button to the form
     submitted = st.form_submit_button("Submit")
-    if not openai_api_key:
-        st.info("Please add your OpenAI API key to continue.")
-    elif not original_message:
+    #if not openai_api_key:
+    #    st.info("Please add your OpenAI API key to continue.")
+    if not original_message:
         st.info("Please enter an original message.")
     # If the form is submitted, generate the email response
     elif submitted:
         answerGPT = AnswerGPT(api_key=openai_api_key, synthetic_level=synthetic_level, tone=tone, original_message=original_message, key_points=key_points)
         # Generate the email response
         progress_bar = st.progress(0)
-        with st.spinner('Generating response...'):
+        with st.spinner('Generating summary...'):
             response = answerGPT.answer_message()
         for i in range(100):
             # Update progress bar
@@ -87,4 +89,4 @@ with st.form("myform"):
         elif type(response) == Exception:
             st.error(f"An OpenAI API error occurred: {str(response)}")
         else:
-            st.text_area("Email Response:", value=response, height=300)
+            st.text_area("Email Response:", value=response, height=200)
