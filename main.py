@@ -46,47 +46,74 @@ synthetic_level_instructions = {
 synthetic_level = synthetic_level_instructions[synthetic_level]
 
 # Get the OpenAI API key directly from ours
-#openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
-#os.environ['OPENAI_API_KEY'] = openai_api_key # Pass the API key into an environment variable.
+# openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
+# os.environ['OPENAI_API_KEY'] = openai_api_key # Pass the API key into an environment variable.
 openai_api_key = st.secrets['OPENAI_API_KEY']
-
 
 # Get the tone of the message from the user
 tone = st.sidebar.selectbox(
     "Select the tone of the message:", options=['Casual', 'Formal']
 )
 
-# Set up the form for user input
-with st.form("myform"):
-    # Get the original message from the user
-    original_message = st.text_area("Email to answer:",
-                                    help="Enter the original message that you want to reply to.")
-    # Get the key points from the user
-    key_points = st.text_area(
-        "Key points to include in the answer:",
-        help="Enter the key points that should be included in the email response.")
-    # Add a submit button to the form
-    submitted = st.form_submit_button("Submit")
-    #if not openai_api_key:
-    #    st.info("Please add your OpenAI API key to continue.")
-    if not original_message:
-        st.info("Please enter an original message.")
-    # If the form is submitted, generate the email response
-    elif submitted:
-        answerGPT = AnswerGPT(api_key=openai_api_key, synthetic_level=synthetic_level, tone=tone, original_message=original_message, key_points=key_points)
-        # Generate the email response
-        progress_bar = st.progress(0)
-        with st.spinner('Generating summary...'):
-            response = answerGPT.answer_message()
-        for i in range(100):
-            # Update progress bar
-            progress_bar.progress(i + 1)
-            # Pause for effect
-            time.sleep(0.01)
-        # Display the response
-        if type(response) == OpenAIError:
-            st.error(f"An OpenAI API error occurred: {str(response)}")
-        elif type(response) == Exception:
-            st.error(f"An OpenAI API error occurred: {str(response)}")
-        else:
-            st.text_area("Email Response:", value=response, height=200)
+if 'email_summary' not in st.session_state or 'email' not in st.session_state or 'gpt' not in st.session_state:
+    answerGPT = None
+    email_summary = None
+
+    with st.form("form"):
+        # Get the original message from the user
+        original_message = st.text_area("Email to answer:",
+                                        help="Enter the original message that you want to reply to.")
+        # Add a submit button to the form
+        submitted = st.form_submit_button("Next")
+        # if not openai_api_key:
+        #    st.info("Please add your OpenAI API key to continue.")
+        if not original_message:
+            st.info("Please enter an original message.")
+        # If the form is submitted, generate the email response
+        elif submitted:
+            answerGPT = AnswerGPT(api_key=openai_api_key, synthetic_level=synthetic_level, tone=tone,
+                                  original_message=original_message)
+            with st.spinner('Generating summary...'):
+                email_summary = answerGPT.generate_summary()
+
+            st.text_area("Email Summary:", value=email_summary, height=150)
+
+            st.session_state['gpt'] = answerGPT
+            st.session_state['email_summary'] = email_summary
+            st.session_state['email'] = original_message
+
+else:
+    st.text_area("Email", st.session_state['email'])
+    st.text_area("Email summary", st.session_state['email_summary'])
+    answerGPT = st.session_state['gpt']
+
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    if len(st.session_state.messages) == 5:
+        st.session_state.messages = None
+        st.text_area("Email Answer", value=answerGPT.craft_answer(), height=400)
+
+    # Display chat messages from history on app rerun
+    if st.session_state.messages is not None:
+        if prompt := st.chat_input("Answer:"):  # Prompt for user input and save to chat history
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            question = st.session_state.messages[-1]["content"]
+            answerGPT.chain.memory.save_context(
+                {"query": question},
+                {"output": prompt},
+            )
+
+        for message in st.session_state.messages:  # Display the prior chat messages
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
+
+        # If last message is not from assistant, ask a new question
+        if len(st.session_state.messages) < 5:
+            if len(st.session_state.messages) == 0 or st.session_state.messages[-1]["role"] != "assistant":
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        response = answerGPT.ask_question()
+                        st.write(response)
+                        message = {"role": "assistant", "content": response}
+                        st.session_state.messages.append(message)  # Add response to message history
