@@ -18,7 +18,7 @@ from AnswerGPT import AnswerGPT
 import os
 
 # Set up the title of the web application
-st.title("🦜🔗  - AnswerGPT")
+st.title("🦜🔗  - AnswerGPT2")
 
 # Add a brief user guide
 st.sidebar.markdown("""
